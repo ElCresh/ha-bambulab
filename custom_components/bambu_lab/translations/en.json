@@ -275,7 +275,7 @@
         "name": "Refresh SD card files"
       },
       "sd_card_print": {
-        "name": "Print SD card file"
+        "name": "Print file"
       }
     },
     "fan": {
@@ -346,10 +346,10 @@
         "name": "SD card file"
       },
       "sd_card_plate": {
-        "name": "SD card plate"
+        "name": "Printer plate"
       },
       "sd_card_slot": {
-        "name": "SD card AMS slot",
+        "name": "Spool selection",
         "state": {
           "automatic": "Automatic",
           "external_spool": "External spool"
