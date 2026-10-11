@@ -270,6 +270,12 @@
       },
       "buzzer_beeping": {
         "name": "Buzzer - segnale acustico"
+      },
+      "sd_card_refresh": {
+        "name": "Aggiorna l'elenco file della scheda SD"
+      },
+      "sd_card_print": {
+        "name": "Stampa file"
       }
     },
     "fan": {
@@ -334,6 +340,19 @@
         "state": {
           "cooling": "Raffreddamento",
           "heating": "Riscaldamento"
+        }
+      },
+      "sd_card_file": {
+        "name": "File su scheda SD"
+      },
+      "sd_card_plate": {
+        "name": "Piatto di stampa"
+      },
+      "sd_card_slot": {
+        "name": "Selezione filamento di stampa",
+        "state": {
+          "automatic": "Automatico",
+          "external_spool": "Spool esterno"
         }
       }
     },
@@ -896,6 +915,15 @@
       },
       "prompt_sound": {
         "name": "Consenti suono rapido"
+      },
+      "print_bed_leveling": {
+        "name": "Livellamento piatto prima della stampa"
+      },
+      "print_flow_cali": {
+        "name": "Calibrazione del flusso prima della stampa"
+      },
+      "print_timelapse": {
+        "name": "Registra timelapse"
       },
       "ftp": {
         "name": "Carica i dati del modello dalla stampante"
