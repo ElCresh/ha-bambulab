@@ -11,6 +11,7 @@ from .const import DOMAIN, LOGGER
 from .pybambu.const import Features, SPEED_PROFILE, AIRDUCT_MODES
 from .coordinator import BambuDataUpdateCoordinator
 from .models import BambuLabEntity
+from .pybambu.sd_card import print_path
 
 
 async def async_setup_entry(
@@ -31,6 +32,13 @@ async def async_setup_entry(
 
         if coordinator.get_model().supports_feature(Features.AIRDUCT_MODE):
             async_add_entities([BambuLabAirductModeSelect(coordinator)])
+
+    if coordinator.client.ftp_enabled:
+        async_add_entities([
+            BambuLabSdCardFileSelect(coordinator),
+            BambuLabSdCardPlateSelect(coordinator),
+            BambuLabSdCardSlotSelect(coordinator),
+        ])
 
 
 class BambuLabSpeedSelect(BambuLabEntity, SelectEntity):
@@ -94,3 +102,96 @@ class BambuLabAirductModeSelect(BambuLabEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         """Set airduct mode."""
         self.coordinator.get_model().info.set_airduct_mode(option)
+
+
+class BambuLabSdCardFileSelect(BambuLabEntity, SelectEntity):
+    """SD card file select."""
+
+    _attr_icon = "mdi:folder-file"
+    _attr_translation_key = "sd_card_file"
+
+    def __init__(self, coordinator: BambuDataUpdateCoordinator) -> None:
+        """Initialize SD card file select."""
+        super().__init__(coordinator=coordinator)
+        printer = self.coordinator.get_model().info
+        self._attr_unique_id = f"{printer.serial}_SdCardFile"
+
+    @property
+    def options(self) -> list[str]:
+        """Return the printable files on the SD card."""
+        return self.coordinator.sd_card.file_options()
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the selected file."""
+        selected = self.coordinator.sd_card.selected
+        return print_path(selected) if selected else None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return the selected file details and filament mapping."""
+        return self.coordinator.sd_card.mapping_attributes()
+
+    async def async_select_option(self, option: str) -> None:
+        """Select a file and read its plates."""
+        await self.coordinator.sd_card.async_select_file(option)
+
+
+class BambuLabSdCardPlateSelect(BambuLabEntity, SelectEntity):
+    """SD card file plate select."""
+
+    _attr_icon = "mdi:layers-outline"
+    _attr_translation_key = "sd_card_plate"
+
+    def __init__(self, coordinator: BambuDataUpdateCoordinator) -> None:
+        """Initialize SD card plate select."""
+        super().__init__(coordinator=coordinator)
+        printer = self.coordinator.get_model().info
+        self._attr_unique_id = f"{printer.serial}_SdCardPlate"
+
+    @property
+    def available(self) -> bool:
+        """Return True if the selected file has plates."""
+        return len(self.coordinator.sd_card.plates) > 0
+
+    @property
+    def options(self) -> list[str]:
+        """Return the plates of the selected file."""
+        return self.coordinator.sd_card.plate_options()
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the plate to print."""
+        plate = self.coordinator.sd_card.plate
+        return str(plate) if plate is not None else None
+
+    async def async_select_option(self, option: str) -> None:
+        """Select the plate to print."""
+        self.coordinator.sd_card.select_plate(option)
+
+
+class BambuLabSdCardSlotSelect(BambuLabEntity, SelectEntity):
+    """AMS slot override for single filament SD card prints."""
+
+    _attr_icon = "mdi:tray"
+    _attr_translation_key = "sd_card_slot"
+
+    def __init__(self, coordinator: BambuDataUpdateCoordinator) -> None:
+        """Initialize AMS slot override select."""
+        super().__init__(coordinator=coordinator)
+        printer = self.coordinator.get_model().info
+        self._attr_unique_id = f"{printer.serial}_SdCardSlot"
+
+    @property
+    def options(self) -> list[str]:
+        """Return the slots that can be forced."""
+        return self.coordinator.sd_card.slot_options()
+
+    @property
+    def current_option(self) -> str:
+        """Return the slot override."""
+        return self.coordinator.sd_card.slot
+
+    async def async_select_option(self, option: str) -> None:
+        """Select the AMS slot override."""
+        self.coordinator.sd_card.select_slot(option)

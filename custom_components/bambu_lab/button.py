@@ -39,6 +39,16 @@ FORCE_REFRESH_BUTTON_DESCRIPTION = ButtonEntityDescription(
     translation_key="refresh",
     entity_category=EntityCategory.DIAGNOSTIC,
 )
+SD_CARD_REFRESH_BUTTON_DESCRIPTION = ButtonEntityDescription(
+    key="sd_card_refresh",
+    icon="mdi:folder-refresh",
+    translation_key="sd_card_refresh",
+)
+SD_CARD_PRINT_BUTTON_DESCRIPTION = ButtonEntityDescription(
+    key="sd_card_print",
+    icon="mdi:printer-3d-nozzle",
+    translation_key="sd_card_print",
+)
 
 # There is no reliable way to obtain state of the buzzer, so it is better to expose as buttons
 # Also, there are 3 possible states, therefore, it cannot be fully exposed by switch
@@ -91,6 +101,13 @@ async def async_setup_entry(
             ]
 
         async_add_entities(buttons)
+
+        if coordinator.client.ftp_enabled:
+            async_add_entities([BambuLabSdCardPrintButton(coordinator, entry)])
+
+    # Listing the SD card needs no signed command.
+    if coordinator.client.ftp_enabled:
+        async_add_entities([BambuLabSdCardRefreshButton(coordinator, entry)])
 
 
 class BambuLabButton(BambuLabEntity, ButtonEntity):
@@ -198,3 +215,28 @@ class BambuLabBuzzerBeepingButton(BambuLabButton):
     async def async_press(self) -> None:
         """ Pause the Print on button press"""
         self.coordinator.client.publish(BUZZER_SET_BEEPING)
+
+
+class BambuLabSdCardRefreshButton(BambuLabButton):
+    """BambuLab SD card file list refresh Button"""
+
+    entity_description = SD_CARD_REFRESH_BUTTON_DESCRIPTION
+
+    async def async_press(self) -> None:
+        """ Re-read the SD card file list"""
+        await self.coordinator.sd_card.async_refresh(user=True)
+
+
+class BambuLabSdCardPrintButton(BambuLabButton):
+    """BambuLab SD card print Button"""
+
+    entity_description = SD_CARD_PRINT_BUTTON_DESCRIPTION
+
+    @property
+    def available(self) -> bool:
+        """Return if the button is available"""
+        return self.coordinator.sd_card.selected is not None
+
+    async def async_press(self) -> None:
+        """ Print the selected SD card file"""
+        await self.coordinator.sd_card.async_print()

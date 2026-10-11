@@ -45,6 +45,25 @@ FTP_SWITCH_DESCRIPTION = SwitchEntityDescription(
     entity_category=EntityCategory.CONFIG,
 )
 
+PRINT_BED_LEVELING_SWITCH_DESCRIPTION = SwitchEntityDescription(
+    key="print_bed_leveling",
+    icon="mdi:grid",
+    translation_key="print_bed_leveling",
+    entity_category=EntityCategory.CONFIG,
+)
+PRINT_FLOW_CALI_SWITCH_DESCRIPTION = SwitchEntityDescription(
+    key="print_flow_cali",
+    icon="mdi:waves",
+    translation_key="print_flow_cali",
+    entity_category=EntityCategory.CONFIG,
+)
+PRINT_TIMELAPSE_SWITCH_DESCRIPTION = SwitchEntityDescription(
+    key="print_timelapse",
+    icon="mdi:timelapse",
+    translation_key="print_timelapse",
+    entity_category=EntityCategory.CONFIG,
+)
+
 
 async def async_setup_entry(
         hass: HomeAssistant,
@@ -67,6 +86,13 @@ async def async_setup_entry(
     if not coordinator.get_model().print_fun.mqtt_signature_required:
         if coordinator.get_model().supports_feature(Features.PROMPT_SOUND):
                 async_add_entities([BambuLabPromptSoundSwitch(coordinator, entry)])
+
+        if coordinator.client.ftp_enabled:
+            async_add_entities([
+                BambuLabPrintOptionSwitch(coordinator, entry, PRINT_BED_LEVELING_SWITCH_DESCRIPTION, Options.PRINT_BED_LEVELING),
+                BambuLabPrintOptionSwitch(coordinator, entry, PRINT_FLOW_CALI_SWITCH_DESCRIPTION, Options.PRINT_FLOW_CALI),
+                BambuLabPrintOptionSwitch(coordinator, entry, PRINT_TIMELAPSE_SWITCH_DESCRIPTION, Options.PRINT_TIMELAPSE),
+            ])
     
 
 
@@ -171,3 +197,30 @@ class BambuLabPromptSoundSwitch(BambuLabSwitch):
         """Disable A1 / H2D sound."""
         self.coordinator.get_model().info.set_prompt_sound(False)
 
+
+class BambuLabPrintOptionSwitch(BambuLabSwitch):
+    """BambuLab SD card print option Switch"""
+
+    def __init__(
+            self,
+            coordinator: BambuDataUpdateCoordinator,
+            config_entry: ConfigEntry,
+            description: SwitchEntityDescription,
+            option: Options
+    ) -> None:
+        self.entity_description = description
+        super().__init__(coordinator, config_entry)
+        self._option = option
+        self._attr_is_on = self.coordinator.get_option_enabled(option)
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Enable the print option."""
+        self._attr_is_on = True
+        await self.coordinator.set_option_enabled(self._option, True)
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Disable the print option."""
+        self._attr_is_on = False
+        await self.coordinator.set_option_enabled(self._option, False)
+        self.async_write_ha_state()

@@ -44,12 +44,18 @@ BAMBU_LAB_CARDS = [
 class Options(IntEnum):
     CAMERA = 1,
     IMAGECAMERA = 2,
-    FIRMWAREUPDATE = 6
+    FIRMWAREUPDATE = 6,
+    PRINT_BED_LEVELING = 7,
+    PRINT_FLOW_CALI = 8,
+    PRINT_TIMELAPSE = 9
 
 OPTION_NAME = {
     Options.CAMERA:         "enable_camera",
     Options.IMAGECAMERA:    "camera_as_image_sensor",
     Options.FIRMWAREUPDATE: "enable_firmware_update",
+    Options.PRINT_BED_LEVELING: "print_bed_leveling",
+    Options.PRINT_FLOW_CALI:    "print_flow_cali",
+    Options.PRINT_TIMELAPSE:    "print_timelapse",
 }
 
 def load_dict(filename: str) -> dict:

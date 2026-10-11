@@ -270,6 +270,12 @@
       },
       "buzzer_beeping": {
         "name": "Buzzer - Beeping"
+      },
+      "sd_card_refresh": {
+        "name": "Refresh SD card files"
+      },
+      "sd_card_print": {
+        "name": "Print SD card file"
       }
     },
     "fan": {
@@ -334,6 +340,19 @@
         "state": {
           "cooling": "Cooling",
           "heating": "Heating"
+        }
+      },
+      "sd_card_file": {
+        "name": "SD card file"
+      },
+      "sd_card_plate": {
+        "name": "SD card plate"
+      },
+      "sd_card_slot": {
+        "name": "SD card AMS slot",
+        "state": {
+          "automatic": "Automatic",
+          "external_spool": "External spool"
         }
       }
     },
@@ -883,6 +902,15 @@
       },
       "prompt_sound": {
         "name": "Prompt sound"
+      },
+      "print_bed_leveling": {
+        "name": "Bed leveling before print"
+      },
+      "print_flow_cali": {
+        "name": "Flow calibration before print"
+      },
+      "print_timelapse": {
+        "name": "Printer timelapse"
       }
     },
     "update": {

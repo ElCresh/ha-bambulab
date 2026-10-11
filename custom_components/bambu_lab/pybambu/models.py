@@ -1325,6 +1325,14 @@ class PrintJob:
                 )
         return sort_newest_first(dedupe_remote_files(files))
 
+    def download_ftps_file(self, remote_file: RemoteMediaFile, final_path: Path) -> int:
+        """Download one file listed over FTPS, through a .part file."""
+        source = Ftps990MediaSource(self._client)
+        try:
+            return self._download_remote_file_atomic(source, remote_file, final_path)
+        finally:
+            source.close()
+
     def _download_remote_file_atomic(
         self,
         source: RemoteMediaSource,

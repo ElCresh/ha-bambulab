@@ -63,6 +63,7 @@ from .pybambu.commands import (
     RETRY_LOAD_FILAMENT_TEMPLATE,
     DONE_LOAD_FILAMENT_TEMPLATE
 )
+from .sd_card import SdCardBrowser
 
 class BambuDataUpdateCoordinator(DataUpdateCoordinator):
     hass: HomeAssistant
@@ -80,6 +81,7 @@ class BambuDataUpdateCoordinator(DataUpdateCoordinator):
         config['user_language'] = hass.config.language
         config['file_cache_path'] = self.get_file_cache_directory(config['serial'])
         self.client = BambuClient(config)
+        self.sd_card = SdCardBrowser(self)
             
         self._updatedDevice = False
         self._shutdown = False
@@ -137,6 +139,7 @@ class BambuDataUpdateCoordinator(DataUpdateCoordinator):
             # A successful connection ends any access denied episode.
             self._access_denied_handled = False
             self._printer_ready()
+            self._hass.async_create_task(self.sd_card.async_refresh())
 
         elif event == "event_light_update":
             self._update_data()
@@ -187,6 +190,8 @@ class BambuDataUpdateCoordinator(DataUpdateCoordinator):
         # event_print_failed
         elif 'event_print_' in event:
             self.PublishDeviceTriggerEvent(event)
+            if event in ("event_print_finished", "event_print_failed", "event_print_canceled"):
+                self._hass.async_create_task(self.sd_card.async_refresh())
 
     async def listen(self):
         LOGGER.debug("Starting listen()")
@@ -736,7 +741,7 @@ class BambuDataUpdateCoordinator(DataUpdateCoordinator):
             command["print"]["ams_mapping"] = [int(x) for x in ams_mapping.split(',')]
         command["print"]["subtask_name"] = os.path.basename(filepath)
 
-        self.client.publish(command)
+        return self.client.publish(command)
 
     async def _async_update_data(self):
         LOGGER.debug(f"_async_update_data() called")
@@ -1019,7 +1024,7 @@ class BambuDataUpdateCoordinator(DataUpdateCoordinator):
 
         default = False
         match option:
-            case Options.CAMERA:
+            case Options.CAMERA | Options.PRINT_BED_LEVELING | Options.PRINT_FLOW_CALI:
                 default = True
 
         return options.get(OPTION_NAME[option], default)
@@ -1042,7 +1047,9 @@ class BambuDataUpdateCoordinator(DataUpdateCoordinator):
                 options=options)
 
             # Refresh all entities to handle deleted/added entities.
-            self._printer_ready()
+            # The print options only change the next SD card print, not the entity set.
+            if option not in (Options.PRINT_BED_LEVELING, Options.PRINT_FLOW_CALI, Options.PRINT_TIMELAPSE):
+                self._printer_ready()
 
             if option == Options.CAMERA:
                 # Camera option changed, need to poke bambu client to update its camera state:
