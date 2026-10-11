@@ -322,3 +322,53 @@ def test_print_option_switch_writes_state_after_toggle(option):
     assert switch.is_on is False
     coordinator.set_option_enabled.assert_awaited_with(option, False)
     assert switch.async_write_ha_state.call_count == 2
+
+
+def test_plate_filaments_attribute_single_filament(browser):
+    attributes = browser.mapping_attributes()
+    assert attributes["mapping_error"] is None
+    assert attributes["plate_filaments"] == [{
+        "id": 1, "type": "PLA", "color": "#9B9EA0", "tray": 3, "tray_name": "AMS 1 Tray 4",
+        "tray_color": "#9B9EA0", "external_spool": False,
+    }]
+
+
+def test_plate_filaments_attribute_two_filaments(browser):
+    two_filament_plate(browser)
+    filaments = browser.mapping_attributes()["plate_filaments"]
+    assert [(f["id"], f["tray"], f["tray_name"], f["tray_color"]) for f in filaments] == [
+        (1, 0, "AMS 1 Tray 1", "#000000"), (2, 1, "AMS 1 Tray 2", "#FFFFFF")]
+
+
+def test_plate_filaments_attribute_external_spool(browser):
+    browser.select_slot("external_spool")
+    filament = browser.mapping_attributes()["plate_filaments"][0]
+    assert filament["external_spool"] is True
+    assert filament["tray"] is None and filament["tray_name"] is None and filament["tray_color"] is None
+
+
+def test_plate_filaments_attribute_refused_mapping(browser):
+    browser.plates = [ProjectPlate(1, (PlateFilament(1, "PETG", "#FF0000"),))]
+    attributes = browser.mapping_attributes()
+    assert "No loaded PETG slot" in attributes["mapping_error"]
+    assert attributes["mapping"] == [attributes["mapping_error"]]
+    filament = attributes["plate_filaments"][0]
+    assert filament["tray"] is None and filament["external_spool"] is False
+    assert filament["color"] == "#FF0000"
+
+
+def test_reading_attribute_while_the_file_is_being_read(browser):
+    browser.plates = []
+    browser.plate = None
+    browser.busy = True
+    attributes = browser.mapping_attributes()
+    assert attributes["reading"] is True
+    assert attributes["mapping_error"] is None
+    assert attributes["mapping"] == []
+    assert attributes["plate_filaments"] == []
+
+
+def test_reading_attribute_is_false_once_the_read_is_done(browser):
+    assert browser.mapping_attributes()["reading"] is False
+    browser.selected = None
+    assert browser.mapping_attributes()["reading"] is False

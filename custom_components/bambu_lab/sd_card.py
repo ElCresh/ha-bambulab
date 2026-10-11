@@ -26,6 +26,13 @@ EXTERNAL_SPOOL = "external_spool"
 STOPPED_STATES = ("IDLE", "FINISH", "FAILED")
 
 
+def _css_color(color: str | None) -> str | None:
+    """'#RRGGBB' from a slicer ('#RRGGBB') or AMS ('RRGGBBAA') color."""
+    if not color:
+        return None
+    return "#" + color.lstrip("#")[:6].upper()
+
+
 class SdCardBrowser:
     """SD card file list, selection and print settings for one printer."""
 
@@ -163,22 +170,49 @@ class SdCardBrowser:
         return True, ",".join(str(i) for i in map_filaments(filaments, slots, forced_index))
 
     def mapping_attributes(self) -> dict:
-        attributes = {"error": self.read_error or self.last_error}
+        attributes = {"error": self.read_error or self.last_error, "reading": self.busy}
         if self.selected is not None:
+            filaments = self._plate_filaments()
             attributes.update({
                 "size": self.selected.size,
                 "modified": self.selected.modified.isoformat() if self.selected.modified else None,
                 "plates": self.plate_options(),
-                "filaments": [f"{f.id}: {f.type} {f.color}" for f in self._plate_filaments()],
+                "filaments": [f"{f.id}: {f.type} {f.color}" for f in filaments],
+                "mapping_error": None,
             })
+            if self.busy:
+                # Still downloading: there are no plates yet, so there is nothing to refuse.
+                attributes.update({"mapping": [], "plate_filaments": []})
+                return attributes
+            use_ams, trays = True, []
             try:
                 use_ams, ams_mapping = self.mapping()
+                if use_ams:
+                    trays = [int(index) for index in ams_mapping.split(",")]
                 attributes["mapping"] = (
-                    [f"{f.id} -> {ams_slot_name(int(ams_mapping.split(',')[f.id - 1]))}"
-                     for f in self._plate_filaments()] if use_ams else [EXTERNAL_SPOOL])
+                    [f"{f.id} -> {ams_slot_name(trays[f.id - 1])}" for f in filaments]
+                    if use_ams else [EXTERNAL_SPOOL])
             except FilamentMappingError as e:
                 attributes["mapping"] = [str(e)]
+                attributes["mapping_error"] = str(e)
+            slot_colors = {slot.index: slot.color for slot in loaded_slots(self._model.ams.data)}
+            attributes["plate_filaments"] = [
+                self._plate_filament_attribute(f, use_ams, trays, slot_colors) for f in filaments]
         return attributes
+
+    @staticmethod
+    def _plate_filament_attribute(filament, use_ams: bool, trays: list[int], slot_colors: dict) -> dict:
+        tray = trays[filament.id - 1] if filament.id - 1 < len(trays) else -1
+        tray = tray if tray >= 0 else None
+        return {
+            "id": filament.id,
+            "type": filament.type,
+            "color": _css_color(filament.color),
+            "tray": tray,
+            "tray_name": ams_slot_name(tray) if tray is not None else None,
+            "tray_color": _css_color(slot_colors.get(tray)) if tray is not None else None,
+            "external_spool": not use_ams,
+        }
 
     async def async_print(self) -> None:
         """Start the selected plate with the configured options."""
